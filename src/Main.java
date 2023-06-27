@@ -12,16 +12,14 @@ public class Main {
     //  Database credentials
     static final String USER = "user";
     static final String PASS = "1919";
-    public static String generateString(Random rng, String characters, int length)
-    {
-        char[] text = new char[length];
-        for (int i = 0; i < length; i++)
-        {
-            text[i] = characters.charAt(rng.nextInt(characters.length()));
-        }
-        return new String(text);
+    public static void CompanyAdder(String sql, Scanner scanner, Statement stmt, int i) throws SQLException {
+        System.out.println("Enter the company name:");
+        sql = String.format("INSERT INTO COMPANY" +
+                "(ID,NAME) VALUES (%d, '%s')", i, scanner.nextLine());
+        stmt.executeUpdate(sql);
+        System.out.println("The company was created!\n");
     }
-    public static void main(String[] args) throws SQLException {
+    public static void main(String[] args) throws SQLException, ClassNotFoundException {
 
         Connection conn = null;
         Statement stmt = null;
@@ -33,20 +31,31 @@ public class Main {
             conn = DriverManager.getConnection(DB_URL);
             //STEP 3: Execute a query
             stmt = conn.createStatement();
-            String sql = "DROP TABLE IF EXISTS COMPANY";
+            String sql = "DROP TABLE IF EXISTS CAR";
+            stmt.executeUpdate(sql);
+            sql = "DROP TABLE IF EXISTS COMPANY";
             stmt.executeUpdate(sql);
 
             sql =  "CREATE TABLE COMPANY (ID INTEGER PRIMARY KEY AUTO_INCREMENT, NAME VARCHAR(255) UNIQUE NOT NULL)";
             stmt.executeUpdate(sql);
+            sql =  "CREATE TABLE CAR (ID INTEGER PRIMARY KEY AUTO_INCREMENT, NAME VARCHAR(255) UNIQUE NOT NULL," +
+                    "COMPANY_ID INT NOT NULL," +
+                    "Constraint fk_company FOREIGN KEY (COMPANY_ID)" +
+                    "REFERENCES COMPANY(ID)" +
+                    ")";
+            //"constraint pk_car PRIMARY KEY (ID, COMPANY_ID),"+
+            stmt.executeUpdate(sql);
             Scanner scanner = new Scanner(System.in);
-            int i = 0;
+            int i = 1;
+            int l = 1;
             while (true) {
                 System.out.println("1. Log in as a manager\n" +
                         "0. Exit");
+
                 int choice = Integer.parseInt(scanner.nextLine());
                 if (choice == 0) {
                     return;
-                } else {
+                } else if (choice == 1) {
                     while (true) {
                         System.out.println("\n1. Company list\n" +
                                 "2. Create a company\n" +
@@ -55,15 +64,13 @@ public class Main {
                         if (choice == 0) {
                             break;
                         } else if (choice == 2) {
-                            System.out.println("Enter the company name:");
-                            sql = String.format("INSERT INTO COMPANY" +
-                                    "(ID,NAME) VALUES (%d, '%s')", ++i, scanner.nextLine());
-                            stmt.executeUpdate(sql);
-                            System.out.println("The company was created!\n");
+
+                            CompanyAdder(sql, scanner, stmt, l);
+                            l++;
                         } else {
+                            System.out.println("\nChoose the company:");
                             ResultSet companies = stmt.executeQuery("SELECT * FROM COMPANY");
                             Map<Integer, String> mapOfCompanies = new HashMap<>();
-
                             while (companies.next()) {
                                 mapOfCompanies.put(
                                         companies.getInt("ID"),
@@ -75,10 +82,61 @@ public class Main {
                             companies.close();
                             if (mapOfCompanies.isEmpty()) {
                                 System.out.println("The company list is empty");
+                            } else {
+                                System.out.println("0. Back");
+                                choice = Integer.parseInt(scanner.nextLine());
+                                while (true) {
+                                    if (choice == 0) {
+                                        break;
+                                    } else {
+                                        int id = choice;
+                                        System.out.printf("'%s' company%n", mapOfCompanies.get(id));
+                                        while (true) {
+                                            System.out.println("\n1. Car list\n" +
+                                                    "2. Create a car\n" +
+                                                    "0. Back");
+                                            choice = Integer.parseInt(scanner.nextLine());
+                                            sql = String.format("SELECT * FROM CAR WHERE " +
+                                                    "(COMPANY_ID = %d)", id);
+                                            ResultSet cars = stmt.executeQuery(sql);
+                                            Map<Integer, String> mapOfCars = new HashMap<>();
+                                            while (cars.next()) {
+                                                mapOfCars.put(
+                                                        cars.getInt("ID"),
+                                                        cars.getString("NAME"));
+                                            }
+                                            cars.close();
+                                            if (choice == 0) {
+                                                break;
+                                            } else if (choice == 2) {
+                                                System.out.println("\nEnter the car name:");
+                                                sql = String.format("INSERT INTO CAR" +
+                                                        " VALUES (%d, '%s', %d)", i, scanner.nextLine(), id);
+                                                i++;
+                                                stmt.executeUpdate(sql);
+                                                System.out.println("The car was added!");
+                                            } else if (choice == 1){
+                                                int j = 0;
+                                                for (Map.Entry<Integer, String> map : mapOfCars.entrySet()
+                                                ) {
+                                                    j++;
+                                                    System.out.println(j + ". " + map.getValue());
+                                                }
+                                                if (mapOfCars.isEmpty()) {
+                                                    System.out.println("The car list is empty!");
+                                                }
+                                            }
+
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
+                } else {
+
                 }
+
 
             }
         } catch (SQLException | ClassNotFoundException ex) {
