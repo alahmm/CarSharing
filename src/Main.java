@@ -1,11 +1,8 @@
-
+package carsharing;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Random;
+import java.sql.*;
+import java.util.*;
 
 public class Main {
     // JDBC driver name and database URL
@@ -24,9 +21,8 @@ public class Main {
         }
         return new String(text);
     }
-    public static void main(String[] args) {
+    public static void main(String[] args) throws SQLException {
 
-        String dirPath = "src/carsharing/db/carsharing.mv.db";
         Connection conn = null;
         Statement stmt = null;
         try {
@@ -40,32 +36,57 @@ public class Main {
             String sql = "DROP TABLE IF EXISTS COMPANY";
             stmt.executeUpdate(sql);
 
-            sql =  "CREATE TABLE COMPANY (ID INTEGER not NULL, NAME VARCHAR(255))";
+            sql =  "CREATE TABLE COMPANY (ID INTEGER PRIMARY KEY AUTO_INCREMENT, NAME VARCHAR(255) UNIQUE NOT NULL)";
             stmt.executeUpdate(sql);
-            if (args.length > 1) {
-                File file = new File(dirPath + args[1]);
-            } else {
-                File file = new File(dirPath + "carsharing");
+            Scanner scanner = new Scanner(System.in);
+            int i = 0;
+            while (true) {
+                System.out.println("1. Log in as a manager\n" +
+                        "0. Exit");
+                int choice = Integer.parseInt(scanner.nextLine());
+                if (choice == 0) {
+                    return;
+                } else {
+                    while (true) {
+                        System.out.println("\n1. Company list\n" +
+                                "2. Create a company\n" +
+                                "0. Back");
+                        choice = Integer.parseInt(scanner.nextLine());
+                        if (choice == 0) {
+                            break;
+                        } else if (choice == 2) {
+                            System.out.println("Enter the company name:");
+                            sql = String.format("INSERT INTO COMPANY" +
+                                    "(ID,NAME) VALUES (%d, '%s')", ++i, scanner.nextLine());
+                            stmt.executeUpdate(sql);
+                            System.out.println("The company was created!\n");
+                        } else {
+                            ResultSet companies = stmt.executeQuery("SELECT * FROM COMPANY");
+                            Map<Integer, String> mapOfCompanies = new HashMap<>();
+
+                            while (companies.next()) {
+                                mapOfCompanies.put(
+                                        companies.getInt("ID"),
+                                        companies.getString("NAME"));
+                                System.out.println(companies.getInt("ID") + ". " +
+                                        companies.getString("NAME"));
+
+                            }
+                            companies.close();
+                            if (mapOfCompanies.isEmpty()) {
+                                System.out.println("The company list is empty");
+                            }
+                        }
+                    }
+                }
 
             }
+        } catch (SQLException | ClassNotFoundException ex) {
+            throw new RuntimeException(ex);
+        }
 
-/*            String fileName = "";
-            if (args.length > 1) {
-                fileName = args[1];
-            } else {
-                Random rand = new Random();
-                fileName = generateString(rand, "newfile", 7);
-            }*/
-            //File file = new File("jdbc:h2:." + File.separator + "src" + "carsharing" +
-            //       File.separator + "db" + File.separator + fileName);
-
-            // STEP 4: Clean-up environment
-            stmt.close();
-            conn.close();
-        } catch(SQLException se) {
-            //Handle errors for JDBC
-            se.printStackTrace();
-        } catch(Exception e) {
+        // STEP 4: Clean-up environment
+        catch(Exception e) {
             //Handle errors for Class.forName
             e.printStackTrace();
         } finally {
